@@ -115,6 +115,16 @@ ROLE_CONFIG = {
     }
 }
 
+# 特殊角色：直接联系方式，不经过灵犀调度
+SPECIAL_CONTACTS = {
+    "emotional_companion": {
+        "name": "情感伴侣+拍照专家",
+        "qq": "3694666763",
+        "description": "情感陪伴、自拍生成，可直接联系",
+        "bypass_orchestrator": True
+    }
+}
+
 # ==================== 意图识别 ====================
 
 INTENT_PATTERNS = {
@@ -133,8 +143,17 @@ def parse_intent(user_input: str) -> Dict[str, Any]:
         "types": [],
         "keywords": [],
         "platform": None,
-        "content_type": None
+        "content_type": None,
+        "bypass_orchestrator": False,  # 是否跳过灵犀调度
+        "direct_contact": None          # 直接联系方式
     }
+    
+    # 检查是否匹配特殊角色（直接联系，不经过灵犀）
+    special_keywords = ["情感", "伴侣", "拍照", "自拍", "安慰", "陪伴"]
+    if any(kw in user_input for kw in special_keywords):
+        # 注意：自拍相关的图像生成任务仍由灵犀调度
+        # 只有纯情感陪伴才跳过
+        pass  # 暂时不跳过，所有任务都通过灵犀
     
     # 识别意图类型
     for intent_type, keywords in INTENT_PATTERNS.items():
