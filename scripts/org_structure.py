@@ -210,12 +210,12 @@ class AIEnterprise:
         return assignment
     
     def _auto_route_by_content(self, task_desc: str) -> tuple:
-        """根据任务内容自动路由到最合适的部门"""
-        # 关键词匹配部门
+        """根据任务内容自动路由到最合适的部门 - 增强版"""
+        # 扩展关键词匹配部门
         dept_keywords = {
-            "marketing_dept": ["营销", "推广", "品牌", "广告", "小红书", "抖音"],
+            "marketing_dept": ["营销", "推广", "品牌", "广告", "小红书", "抖音", "seo", "SEO", "优化", "排名", "文案", "产品说明"],
             "sales_dept": ["销售", "客户", "订单", "报价", "成交"],
-            "tech_dept": ["开发", "代码", "技术", "系统", "bug"],
+            "tech_dept": ["开发", "代码", "技术", "系统", "bug", "功能", "模块", "编程"],
             "hr_dept": ["招聘", "员工", "薪资", "培训"],
             "finance_dept": ["财务", "预算", "报表", "审计"]
         }
@@ -231,21 +231,43 @@ class AIEnterprise:
         
         if best_match and best_match in self.departments:
             dept = self.departments[best_match]
+            
+            # 如果是 P3 优先级，尝试直接找部门内最合适的角色
+            # 这里简化处理，返回部门总监，让后续逻辑再分配
             return dept.head_role, OrgLevel.DEPARTMENT
         
         # 默认路由到 CEO
         return self.company.ceo_role, OrgLevel.COMPANY
     
     def _find_best_role_for_task(self, task_desc: str) -> str:
-        """找到最适合执行任务的角色"""
-        # 简单实现：遍历所有角色找最匹配的
-        # TODO: 使用向量相似度匹配
-        for role_name, role in self.roles.items():
-            if any(skill in task_desc for skill in role.skills):
-                return role_name
+        """找到最适合执行任务的角色 - 智能匹配版"""
+        best_match = None
+        best_score = 0
         
-        # 兜底返回 CEO
-        return self.company.ceo_role
+        for role_name, role in self.roles.items():
+            score = 0
+            
+            # 技能关键词匹配（每个技能计 1 分）
+            for skill in role.skills:
+                if skill in task_desc:
+                    score += 1
+            
+            # 职位头衔关键词匹配（额外加 2 分）
+            job_keywords = role.job_title.lower().replace("资深", "").replace("高级", "")
+            if any(kw in task_desc for kw in [job_keywords[:2], job_keywords[-2:]] if len(job_keywords) > 2):
+                score += 2
+            
+            # 更新最佳匹配
+            if score > best_score:
+                best_score = score
+                best_match = role_name
+        
+        # 如果有匹配，返回最佳匹配；否则按部门关键词路由
+        if best_match and best_score > 0:
+            return best_match
+        
+        # 兜底：按内容关键词找部门
+        return self._auto_route_by_content(task_desc)[0]
     
     def escalate_task(self, task: TaskAssignment, reason: str):
         """任务升级 - 当前角色无法处理时向上级汇报"""
